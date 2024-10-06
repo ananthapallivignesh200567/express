@@ -1,7 +1,9 @@
 import express, { request, response } from 'express';
+import passport from 'passport';
 import { createUserValidationSchema } from './utils/validationSchemas.mjs';
 import cookieParser from 'cookie-parser';
 import session from 'express-session';
+import "./strategies/local-strategy.mjs"
 import router from "./routes/index.mjs"
 import { mockUsers } from './utils/constants.mjs';
 const PORT=process.env.PORT || 3000
@@ -16,6 +18,8 @@ app.use(session({
         maxAge:60000*60
     }
 }));
+app.use(passport.initialize());
+app.use(passport.session());
 app.use(router);
 
 
@@ -37,39 +41,16 @@ app.get("/",(request,response)=>{
 app.listen(PORT,()=>{
     console.log(`running on port ${PORT}`)
 })
-app.post("/api/auth",(request,response)=>{
-    const {
-        body:{username,password},
-    }=request;
-    const findUser=mockUsers.find(user=>user.username===username&&user.password===password);
-    if(!findUser)
-    return response.status(401).send({msg:"ba credentials"});
-    request.session.user=findUser;
-    return response.status(200).send(findUser);
+app.post("/api/pass",passport.authenticate("local"),(request,response)=>{response.sendStatus(200);})
+app.get("/api/pass/status",(request,response)=>{
+    console.log(request.user);
+    console.log(request.session);
+    return request.user?response.send(request.user):response.sendStatus(401);
 })
-app.get("/api/auth/status",(request,response)=>{
-    request.sessionStore.get(request.sessionID,(err,session)=>{
-        console.log(session);
+app.post("/api/pass/logout",(request,response)=>{
+    if(!request.user)return response.sendStatus(401);
+    request.logout((err)=>{
+        if(err) return response.sendStatus(400);
+        return response.send(200);
     })
-    return request.session.user
-        ? response.sendStatus(200).send(request.session.user)
-        :response.status(401).send({msg:"not authenticated"})
-})
-app.post("/api/cart",(request,response)=>{
-    if(!request.session.user)return response.sendStatus(401);
-    const {
-        body:item
-    }=request;
-    const {cart}=request.session;
-    if(cart){
-        cart.push(item);
-    }
-    else{
-        request.session.cart=[item];
-    }
-    return response.status(200).send(item);
-})
-app.get("/api/cart",(request,response)=>{
-    if(!request.session.user)return response.sendStatus(401);
-    return response.send(request.session.cart ??[])
 })
