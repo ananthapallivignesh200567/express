@@ -3,6 +3,7 @@ import {Router} from "express";
 import {query,validationResult,body,matchedData,checkSchema} from 'express-validator';
 import { createUserValidationSchema } from "../utils/validationSchemas.mjs";
 import resolveIndexByUserId from "../utils/middlewares.mjs";
+import { hashPassword,comparePassword } from "../utils/helpers.mjs";
 const router=Router();
 router.post("/api/users",checkSchema(createUserValidationSchema)
 ,(request,response)=>{

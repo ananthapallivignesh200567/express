@@ -2,22 +2,28 @@ import express, { request, response } from 'express';
 import passport from 'passport';
 import { createUserValidationSchema } from './utils/validationSchemas.mjs';
 import cookieParser from 'cookie-parser';
+import { hashPassword,comparePassword } from "./utils/helpers.mjs";
+import mongoose from 'mongoose';
 import session from 'express-session';
 import "./strategies/local-strategy.mjs"
 import router from "./routes/index.mjs"
+import { User } from './mongoose/user.mjs';
 import { mockUsers } from './utils/constants.mjs';
 const PORT=process.env.PORT || 3000
 const app = express();
-app.use(express.json());
-app.use(cookieParser("helloworld"))
-app.use(session({
-    secret:"vignesh",
-    saveUninitialized:false,
-    resave:false,
-    cookie:{
-        maxAge:60000*60
-    }
-}));
+    mongoose.connect("mongodb://localhost:27017/express_tutorial")
+    .then(() => console.log('Connected to MongoDB'))
+    .catch((err) => console.error('Error connecting to MongoDB:', err));
+    app.use(express.json());
+    app.use(cookieParser("helloworld"))
+    app.use(session({
+        secret:"vignesh",
+        saveUninitialized:false,
+        resave:false,
+        cookie:{
+            maxAge:60000*60
+        }
+    }));
 app.use(passport.initialize());
 app.use(passport.session());
 app.use(router);
@@ -53,4 +59,15 @@ app.post("/api/pass/logout",(request,response)=>{
         if(err) return response.sendStatus(400);
         return response.send(200);
     })
+})
+app.post("/api/newuser",async(request,response)=>{
+    const {body}=request;
+    try{
+        body.password=hashPassword(body.password);
+    const user=new User(body);
+    const savedUser=await user.save();
+    return response.status(201).send(savedUser);
+}catch(err){
+    return response.sendStatus(400);
+}
 })
